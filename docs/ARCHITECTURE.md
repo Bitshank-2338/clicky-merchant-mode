@@ -158,7 +158,33 @@ height estimate can genuinely return a negative Y; trusting it would put the
 cursor off-screen. Pointing at nothing is acceptable; pointing confidently at
 the wrong thing is not.
 
-### 5.3 Read-only is structural, not a runtime check
+### 5.3 The data source must match the screen
+
+An adapter is the right source of truth only for a dashboard it actually
+serves. On the merchant's **live** Razorpay dashboard it is not: the demo
+adapter would supply the seed's figures while the merchant looks at their own.
+
+That is the worst failure this product could have — numbers that are internally
+consistent, correctly formatted, and belong to somebody else's account. Before
+the guard existed, this happened: a live dashboard showing ₹47,320 got the
+seed's ₹10,000 / ₹9,264, with no warning.
+
+So `merchant/screen_facts.py` decides where numbers may come from:
+
+- `is_live_dashboard(ctx)` — positive evidence only (a `dashboard.razorpay.com`
+  URL or a "Razorpay Dashboard" window title). An unrecognised screen is *not*
+  treated as live, which keeps the demo working.
+- On a live dashboard, `merchant/pipeline._settlement_from_screen` bypasses the
+  adapter and parses labelled amounts out of the OCR text, tagged `source="ocr"`.
+- If gross and net cannot both be read, it returns **no figure at all** and
+  records a blocked-fallback audit entry.
+
+The trade-off is deliberate: a live-dashboard answer has lower confidence (0.7)
+and carries an explicit "these came from your screen" caveat, because OCR is
+less reliable than structured data. Lower confidence honestly reported beats
+high confidence in the wrong account.
+
+### 5.4 Read-only is structural, not a runtime check
 
 `merchant/adapters/base.py` has no `create_*`, `refund_*` or `send_*` method.
 There is nothing to call, so nothing can be bypassed. `RazorpayTestAdapter`

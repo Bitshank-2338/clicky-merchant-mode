@@ -31,3 +31,6 @@ github_token.json
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Video build intermediates (the MP4 itself is committed)
+video/build/

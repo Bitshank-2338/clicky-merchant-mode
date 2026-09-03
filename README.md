@@ -174,6 +174,25 @@ back to lower-accuracy tiers and says so.
 7. **Highlighting** — semantic targets resolved client-side through three tiers;
    if none succeeds, Clicky says it cannot see the element.
 
+## On your real Razorpay dashboard
+
+Merchant Mode works on the live dashboard, not only the mock — page detection
+uses the real URL paths, and element targeting locates rows by their label text
+via OCR.
+
+The important part is what it does *not* do. On a live dashboard the demo
+adapter is **bypassed entirely**, because its figures belong to a different
+account. Amounts are read off the screen instead, and the answer says so:
+
+> Is screen par total ₹47,320 dikh raha hai. ₹946 razorpay fees, ₹170 tax on
+> fees katne ke baad ₹46,204 aapke bank jaata hai. **Ye numbers aapki screen se
+> padhe gaye hain, demo data se nahi.**
+
+If the amounts cannot be read clearly, it gives **no figure at all** rather than
+falling back to demo data. This was a real bug found during review — before the
+guard, it confidently quoted ₹9,264 from the seed while the screen showed
+₹46,204. Covered by `tests/test_live_dashboard.py`.
+
 ## Privacy
 
 - Screen capture is **opt-in per session** and limited to the active window.
