@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="clicky-page" content="home">
+  <title>Merchant Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Top bar with demo badge and scenario selector -->
+  <div class="top-bar">
+    <div class="scenario-control">
+      <label for="scenario-select">Scenario:</label>
+      <select id="scenario-select"></select>
+    </div>
+    <div class="demo-badge">DEMO DATA — not a real Razorpay dashboard</div>
+  </div>
+
+  <!-- Main layout: sidebar + content -->
+  <div class="main-container">
+    <!-- Left sidebar nav -->
+    <nav class="sidebar">
+      <div class="nav-item" data-page="home">
+        <button class="nav-button">Home</button>
+      </div>
+      <div class="nav-item" data-page="payments">
+        <button class="nav-button" data-clicky-target="nav.payments">Payments</button>
+      </div>
+      <div class="nav-item" data-page="settlements">
+        <button class="nav-button" data-clicky-target="nav.settlements">Settlements</button>
+      </div>
+      <div class="nav-item" data-page="refunds">
+        <button class="nav-button" data-clicky-target="nav.refunds">Refunds</button>
+      </div>
+      <div class="nav-item" data-page="payment_links">
+        <button class="nav-button" data-clicky-target="nav.payment_links">Payment Links</button>
+      </div>
+      <div class="nav-item" data-page="reports">
+        <button class="nav-button" data-clicky-target="nav.reports">Reports</button>
+      </div>
+    </nav>
+
+    <!-- Main content area -->
+    <div class="content">
+      <!-- Error state (if simulate_error is present) -->
+      <div id="error-card" class="error-card" style="display: none;">
+        <div class="error-icon">⚠</div>
+        <div class="error-content">
+          <div class="error-title" id="error-title"></div>
+          <div class="error-message" id="error-message"></div>
+        </div>
+        <button id="retry-button" class="btn-primary">Retry</button>
+      </div>
+
+      <!-- Page container -->
+      <div id="page-container"></div>
+    </div>
+  </div>
+
+  <!-- Settlement detail modal -->
+  <div id="settlement-modal" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Settlement Details</h3>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Payment link preview modal -->
+  <div id="link-modal" class="modal" style="display: none;">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Demo Notice</h3>
+        <button class="modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>This is a demo. No real payment link has been created or sent.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

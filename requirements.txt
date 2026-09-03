@@ -61,3 +61,16 @@ pynput>=1.7.7
 
 # Live collaboration (WebRTC) — install when collab signalling server exists
 # aiortc>=1.9.0
+
+# ── Merchant Mode (Razorpay Buildathon) ──────────────────────────────────────
+# The FastAPI sidecar that serves the mock dashboard and the merchant API.
+fastapi>=0.110.0
+uvicorn>=0.29.0
+# pytesseract (declared above) also powers per-word OCR boxes used to locate
+# dashboard elements without hardcoded coordinates. Needs the Tesseract binary:
+#   https://github.com/UB-Mannheim/tesseract/wiki
+# Without it, targeting degrades to the DOM-map / vision tiers rather than failing.
+
+# Tests
+pytest>=8.0.0
+pytest-asyncio>=0.23.0

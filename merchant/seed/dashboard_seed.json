@@ -1,0 +1,380 @@
+{
+  "$schema_version": "1.0",
+  "_notice": "SYNTHETIC DEMO DATA. Not real Razorpay data. Every amount is in paise. Consumed by both merchant/adapters/demo.py and mockdashboard/app.js so the numbers on screen and the numbers Clicky reasons about can never diverge.",
+  "generated_for": "Razorpay Buildathon Open Track - Clicky Merchant Mode",
+  "merchant": {
+    "name": "Sharma General Store",
+    "merchant_id": "acc_DEMO0000000001",
+    "currency": "INR",
+    "timezone": "Asia/Kolkata"
+  },
+  "today": "2026-09-03",
+  "scenarios": [
+    {
+      "id": "settlement_lower_than_gross",
+      "title": "Settlement is lower than the day's collection",
+      "description": "The classic small-merchant confusion: ₹10,000 collected but ₹9,264 landed in the bank.",
+      "page": "settlements",
+      "default": true,
+      "settlements": [
+        {
+          "id": "setl_DEMO001",
+          "status": "processed",
+          "period_start": "2026-09-01",
+          "period_end": "2026-09-01",
+          "settled_on": "2026-09-03",
+          "utr": "UTRDEMO0001",
+          "gross_amount": 1000000,
+          "fees": 20000,
+          "tax": 3600,
+          "refunds": 50000,
+          "adjustments": 0,
+          "disputes": 0,
+          "net_amount": 926400,
+          "bank_account_last4": "4471"
+        },
+        {
+          "id": "setl_DEMO002",
+          "status": "processed",
+          "period_start": "2026-08-31",
+          "period_end": "2026-08-31",
+          "settled_on": "2026-09-02",
+          "utr": "UTRDEMO0002",
+          "gross_amount": 450000,
+          "fees": 9000,
+          "tax": 1620,
+          "refunds": 0,
+          "adjustments": 0,
+          "disputes": 0,
+          "net_amount": 439380,
+          "bank_account_last4": "4471"
+        },
+        {
+          "id": "setl_DEMO003",
+          "status": "pending",
+          "period_start": "2026-09-02",
+          "period_end": "2026-09-02",
+          "settled_on": null,
+          "utr": null,
+          "gross_amount": 720000,
+          "fees": 14400,
+          "tax": 2592,
+          "refunds": 0,
+          "adjustments": -1500,
+          "disputes": 0,
+          "net_amount": 701508,
+          "bank_account_last4": "4471"
+        }
+      ],
+      "payments": [
+        {
+          "id": "pay_DEMO0001",
+          "amount": 250000,
+          "status": "captured",
+          "method": "upi",
+          "created_at": "2026-09-01T10:14:00+05:30",
+          "customer_name": "Rohit Verma",
+          "customer_contact": "+919812345678",
+          "customer_email": "rohit.verma@example.com",
+          "description": "Grocery order #1182",
+          "fee": 5000,
+          "tax": 900
+        },
+        {
+          "id": "pay_DEMO0002",
+          "amount": 400000,
+          "status": "captured",
+          "method": "card",
+          "created_at": "2026-09-01T12:02:00+05:30",
+          "customer_name": "Anita Desai",
+          "customer_contact": "+919900112233",
+          "customer_email": "anita.d@example.com",
+          "description": "Bulk order #1183",
+          "fee": 8000,
+          "tax": 1440
+        },
+        {
+          "id": "pay_DEMO0003",
+          "amount": 350000,
+          "status": "captured",
+          "method": "netbanking",
+          "created_at": "2026-09-01T17:41:00+05:30",
+          "customer_name": "Imran Shaikh",
+          "customer_contact": "+919765432100",
+          "customer_email": "imran.s@example.com",
+          "description": "Festival hamper #1184",
+          "fee": 7000,
+          "tax": 1260
+        }
+      ],
+      "refunds": [
+        {
+          "id": "rfnd_DEMO001",
+          "payment_id": "pay_DEMO0002",
+          "amount": 50000,
+          "type": "partial",
+          "status": "processed",
+          "created_at": "2026-09-01T18:20:00+05:30",
+          "speed": "normal",
+          "reason": "Two items out of stock"
+        }
+      ],
+      "failed_payments": [],
+      "payment_links": []
+    },
+    {
+      "id": "multiple_failed_payments",
+      "title": "Several payments failed yesterday",
+      "description": "Merchant sees red 'failed' rows and does not know why or what to do.",
+      "page": "payments",
+      "settlements": [],
+      "payments": [],
+      "refunds": [],
+      "failed_payments": [
+        {
+          "id": "pay_DEMOF001",
+          "amount": 120000,
+          "status": "failed",
+          "method": "card",
+          "created_at": "2026-09-02T11:05:00+05:30",
+          "customer_name": "Kavita Rao",
+          "customer_contact": "+919845001122",
+          "customer_email": "kavita.rao@example.com",
+          "description": "Order #1190",
+          "error_code": "BAD_REQUEST_ERROR",
+          "error_source": "bank",
+          "error_reason": "payment_failed",
+          "error_description": "Payment was not completed at the bank's page."
+        },
+        {
+          "id": "pay_DEMOF002",
+          "amount": 89900,
+          "status": "failed",
+          "method": "upi",
+          "created_at": "2026-09-02T13:44:00+05:30",
+          "customer_name": "Suresh Nair",
+          "customer_contact": "+919812009988",
+          "customer_email": "suresh.n@example.com",
+          "description": "Order #1191",
+          "error_code": "GATEWAY_ERROR",
+          "error_source": "customer",
+          "error_reason": "payment_cancelled",
+          "error_description": "Customer closed the UPI app before approving."
+        },
+        {
+          "id": "pay_DEMOF003",
+          "amount": 250000,
+          "status": "failed",
+          "method": "card",
+          "created_at": "2026-09-02T16:12:00+05:30",
+          "customer_name": "Priya Menon",
+          "customer_contact": "+919700554433",
+          "customer_email": "priya.menon@example.com",
+          "description": "Order #1192",
+          "error_code": "BAD_REQUEST_ERROR",
+          "error_source": "customer",
+          "error_reason": "invalid_otp",
+          "error_description": "The OTP entered was incorrect too many times."
+        },
+        {
+          "id": "pay_DEMOF004",
+          "amount": 45000,
+          "status": "failed",
+          "method": "wallet",
+          "created_at": "2026-09-02T19:30:00+05:30",
+          "customer_name": "Deepak Joshi",
+          "customer_contact": "+919611223344",
+          "customer_email": "deepak.j@example.com",
+          "description": "Order #1193",
+          "error_code": "GATEWAY_ERROR",
+          "error_source": "customer",
+          "error_reason": "insufficient_funds",
+          "error_description": "The wallet did not have enough balance."
+        }
+      ],
+      "payment_links": []
+    },
+    {
+      "id": "full_and_partial_refunds",
+      "title": "One full refund and one partial refund",
+      "description": "Teaches the difference between full and partial refunds and what the customer sees.",
+      "page": "refunds",
+      "settlements": [],
+      "payments": [
+        {
+          "id": "pay_DEMO0101",
+          "amount": 180000,
+          "status": "refunded",
+          "method": "upi",
+          "created_at": "2026-08-30T09:20:00+05:30",
+          "customer_name": "Meera Iyer",
+          "customer_contact": "+919833445566",
+          "customer_email": "meera.iyer@example.com",
+          "description": "Order #1170",
+          "fee": 3600,
+          "tax": 648
+        },
+        {
+          "id": "pay_DEMO0102",
+          "amount": 600000,
+          "status": "partially_refunded",
+          "method": "card",
+          "created_at": "2026-08-30T15:00:00+05:30",
+          "customer_name": "Arjun Bhatt",
+          "customer_contact": "+919922334455",
+          "customer_email": "arjun.b@example.com",
+          "description": "Order #1171",
+          "fee": 12000,
+          "tax": 2160
+        }
+      ],
+      "refunds": [
+        {
+          "id": "rfnd_DEMO101",
+          "payment_id": "pay_DEMO0101",
+          "amount": 180000,
+          "type": "full",
+          "status": "processed",
+          "created_at": "2026-08-30T11:00:00+05:30",
+          "speed": "normal",
+          "reason": "Item damaged in transit"
+        },
+        {
+          "id": "rfnd_DEMO102",
+          "payment_id": "pay_DEMO0102",
+          "amount": 150000,
+          "type": "partial",
+          "status": "pending",
+          "created_at": "2026-08-31T10:30:00+05:30",
+          "speed": "normal",
+          "reason": "One of four items returned"
+        }
+      ],
+      "failed_payments": [],
+      "payment_links": []
+    },
+    {
+      "id": "payment_link_creation",
+      "title": "Creating a payment link",
+      "description": "Blank payment-link form the merchant is being taught to fill in. Nothing is ever submitted.",
+      "page": "payment_links",
+      "settlements": [],
+      "payments": [],
+      "refunds": [],
+      "failed_payments": [],
+      "payment_links": [
+        {
+          "id": "plink_DEMO001",
+          "amount": 150000,
+          "status": "paid",
+          "description": "Custom cake order",
+          "created_at": "2026-08-28T12:00:00+05:30",
+          "expire_by": "2026-08-31T12:00:00+05:30",
+          "customer_name": "Nikhil Gupta",
+          "customer_contact": "+919812340000",
+          "customer_email": "nikhil.g@example.com",
+          "short_url": "https://rzp.io/l/DEMOLINK1"
+        },
+        {
+          "id": "plink_DEMO002",
+          "amount": 320000,
+          "status": "issued",
+          "description": "Catering advance",
+          "created_at": "2026-09-01T09:00:00+05:30",
+          "expire_by": "2026-09-08T09:00:00+05:30",
+          "customer_name": "Ritu Sharma",
+          "customer_contact": "+919845556677",
+          "customer_email": "ritu.sharma@example.com",
+          "short_url": "https://rzp.io/l/DEMOLINK2"
+        }
+      ]
+    },
+    {
+      "id": "empty_state",
+      "title": "Empty state — no transactions yet",
+      "description": "A brand new merchant with nothing on the dashboard. Clicky must not invent activity.",
+      "page": "payments",
+      "settlements": [],
+      "payments": [],
+      "refunds": [],
+      "failed_payments": [],
+      "payment_links": []
+    },
+    {
+      "id": "api_failure",
+      "title": "Dashboard data could not load",
+      "description": "The data source errored. Clicky must say it cannot see the data, not guess.",
+      "page": "settlements",
+      "simulate_error": {
+        "code": "SERVER_ERROR",
+        "message": "We are unable to fetch settlements right now. Please retry."
+      },
+      "settlements": [],
+      "payments": [],
+      "refunds": [],
+      "failed_payments": [],
+      "payment_links": []
+    },
+    {
+      "id": "incomplete_data",
+      "title": "Settlement row with missing fields",
+      "description": "Fees and tax are not shown. Clicky must flag the gap instead of computing a fake breakdown.",
+      "page": "settlements",
+      "settlements": [
+        {
+          "id": "setl_DEMO900",
+          "status": "processed",
+          "period_start": "2026-08-29",
+          "period_end": "2026-08-29",
+          "settled_on": "2026-08-31",
+          "utr": "UTRDEMO0900",
+          "gross_amount": 800000,
+          "fees": null,
+          "tax": null,
+          "refunds": 0,
+          "adjustments": 0,
+          "disputes": 0,
+          "net_amount": 781600,
+          "bank_account_last4": "4471"
+        }
+      ],
+      "payments": [],
+      "refunds": [],
+      "failed_payments": [],
+      "payment_links": []
+    }
+  ],
+  "ui_anchors": {
+    "_notice": "Stable target_id -> on-screen anchor text. Used by the anchor_text targeting tier and mirrored as data-clicky-target attributes in the mock dashboard so the dom_map tier can publish exact rects.",
+    "settlement.gross_amount": "Gross amount",
+    "settlement.fees": "Razorpay fees",
+    "settlement.tax": "Tax on fees",
+    "settlement.refunds": "Refunds",
+    "settlement.adjustments": "Adjustments",
+    "settlement.net_amount": "Net settlement",
+    "settlement.period": "Settlement period",
+    "settlement.utr": "UTR",
+    "settlement.status": "Status",
+    "nav.payments": "Payments",
+    "nav.settlements": "Settlements",
+    "nav.refunds": "Refunds",
+    "nav.payment_links": "Payment Links",
+    "nav.reports": "Reports",
+    "payments.date_filter": "Date range",
+    "payments.status_filter": "Status",
+    "payments.failed_option": "Failed",
+    "payments.apply_filter": "Apply filters",
+    "payments.error_reason": "Failure reason",
+    "payments.table": "Payment ID",
+    "refunds.table": "Refund ID",
+    "refunds.type": "Refund type",
+    "link.amount": "Amount",
+    "link.description": "Description",
+    "link.expiry": "Expire by",
+    "link.customer_name": "Customer name",
+    "link.customer_contact": "Phone number",
+    "link.preview": "Preview link",
+    "link.create_button": "Create payment link",
+    "reports.download": "Download report"
+  }
+}
