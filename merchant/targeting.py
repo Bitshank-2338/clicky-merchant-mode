@@ -235,7 +235,13 @@ def resolve_all(
 
 def summarise(resolved: Sequence[ResolvedTarget]) -> str:
     """One honest sentence about what could and could not be pointed at."""
-    missing = [r.target.label for r in resolved if not r.found]
+    # De-duplicated: a locate request emits several anchors for the *same*
+    # thing ("issue button", then "issue"), and reporting it twice reads like
+    # two separate failures.
+    missing: list[str] = []
+    for item in resolved:
+        if not item.found and item.target.label not in missing:
+            missing.append(item.target.label)
     if not missing:
         return ""
     if len(missing) == 1:

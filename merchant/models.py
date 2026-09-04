@@ -45,6 +45,7 @@ class Intent(str, Enum):
     REFUND_TUTORIAL = "refund_tutorial"
     EXPLAIN_FEES = "explain_fees"
     EXPLAIN_REPORT = "explain_report"
+    LOCATE_ELEMENT = "locate_element"
     EXPLAIN_TERM = "explain_term"
     NEXT_STEP = "next_step"
     UNKNOWN = "unknown"

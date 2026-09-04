@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable, Optional, Sequence
 
-from merchant import explain, kb, screen_facts
+from merchant import explain, kb, locate, screen_facts
 from merchant.adapters import get_adapter
 from merchant.adapters.base import DashboardAdapter, DataResult
 from merchant.audit import (
@@ -50,6 +50,7 @@ from merchant.models import (
     Language,
     MerchantResponse,
     ScreenContext,
+    Severity,
     Step,
 )
 from merchant.page_detect import detect_page, page_from_id
@@ -228,6 +229,8 @@ class MerchantPipeline:
                 self._payment_link(response, language)
             elif detection.intent is Intent.REFUND_TUTORIAL:
                 self._refund(response, language)
+            elif detection.intent is Intent.LOCATE_ELEMENT:
+                self._locate(response, utterance or "", language)
             elif detection.intent is Intent.EXPLAIN_SCREEN:
                 self._explain_screen(response, screen, page_result.page, language)
             elif detection.intent in (Intent.EXPLAIN_FEES, Intent.EXPLAIN_REPORT,
@@ -561,6 +564,71 @@ class MerchantPipeline:
             if language is Language.HINDI else
             "Jo bhi number dikhe, mujhse poochiye — main uspar ishaara karungi."
         )
+
+    def _locate(self, r: MerchantResponse, utterance: str,
+                language: Language) -> None:
+        """Point at whatever the merchant named, rather than explaining it.
+
+        The named phrase becomes the anchor itself, so this is not limited to
+        the anchors in the seed — "the issue button" works even though nothing
+        in the knowledge base has ever heard of it. Resolution happens on the
+        client against the real screen; if it cannot be found, the client
+        reports that instead of pointing at a guess.
+        """
+        target = locate.extract_target(utterance)
+        if not target:
+            r.answer = (
+                "Tell me the name of the button or field you are looking for and "
+                "I will point at it."
+                if language is Language.ENGLISH else
+                "जिस बटन या ख़ाने को ढूँढ रहे हैं उसका नाम बताइए, मैं उस पर इशारा करूँगी।"
+                if language is Language.HINDI else
+                "Jis button ya field ko dhoond rahe hain uska naam bataiye, main "
+                "uspar ishaara karungi."
+            )
+            r.confidence = 0.4
+            r.fallback_used = True
+            return
+
+        # Try the phrase as spoken first, then without its trailing UI noun —
+        # a merchant says "the issue button" where the screen just says "Issue".
+        terms = locate.search_terms(target)
+        r.highlight_targets = [
+            HighlightTarget(
+                target_id=f"locate.{index}",
+                label=target,
+                anchor_text=term,
+                severity=Severity.GUIDANCE,
+            )
+            for index, term in enumerate(terms)
+        ]
+
+        r.answer = (
+            f"Looking for “{target}” — I am pointing at it now. If my cursor does "
+            f"not land on it, it is not on this screen."
+            if language is Language.ENGLISH else
+            f"“{target}” ढूँढ रही हूँ — उसी पर इशारा कर रही हूँ। अगर कर्सर वहाँ नहीं "
+            f"पहुँचा, तो वह इस स्क्रीन पर नहीं है।"
+            if language is Language.HINDI else
+            f"“{target}” dhoond rahi hoon — usi par ishaara kar rahi hoon. Agar "
+            f"cursor wahan nahi pahuncha, to wo is screen par nahi hai."
+        )
+        r.why_seeing_this = (
+            "You asked where something is, so I am showing you rather than "
+            "explaining it."
+            if language is Language.ENGLISH else
+            "आपने पूछा कि यह कहाँ है, इसलिए मैं समझाने के बजाय दिखा रही हूँ।"
+            if language is Language.HINDI else
+            "Aapne pucha ye kahan hai, isliye main samjhane ke bajay dikha rahi hoon."
+        )
+        r.what_next = (
+            "Ask me what it does once you can see it."
+            if language is Language.ENGLISH else
+            "दिख जाए तो पूछिए कि यह क्या करता है।"
+            if language is Language.HINDI else
+            "Dikh jaye to poochiye ki ye kya karta hai."
+        )
+        r.confidence = 0.75
 
     def _knowledge_only(self, r: MerchantResponse, utterance: str, topic_hint: str,
                         language: Language) -> None:

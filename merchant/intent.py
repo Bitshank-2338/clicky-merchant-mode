@@ -138,6 +138,25 @@ _RULES: list[tuple[Intent, float, re.Pattern[str]]] = [
         r"|स्क्रीन.{0,20}समझा",
         re.I)),
 
+    # "Where is X?" — outranks every topic rule on purpose. Someone asking to
+    # be shown the refund button wants a finger pointed at it, not a tutorial
+    # about refunds. `merchant.locate.is_locate_request` is the real gate; the
+    # pattern here only has to be broad enough to reach it.
+    (Intent.LOCATE_ELEMENT, 6.9, re.compile(
+        r"\bwhere\s+(?:is|are|can i find|do i find)\b"
+        r"|\b(?:kahan|kidhar)\s+(?:hai|hain|par|pe|milega|milta)\b"
+        r"|(?:कहाँ|कहां)\s*(?:है|हैं)"
+        # "where it is" / "where they are" — the pronoun form.
+        r"|\bwhere\s+(?:it|they|that|this)\s+(?:is|are)\b"
+        # A UI noun and a locate verb, in either order: "show me the X button"
+        # and "the X button ... can you show me" are the same request.
+        r"|\b(?:show|point|find|locate|highlight)\b.{0,40}"
+        r"\b(?:button|tab|menu|option|field|icon|column|filter|link|section|row)\b"
+        r"|\b(?:button|tab|menu|option|field|icon|column|filter|section|row)\b"
+        r".{0,40}\b(?:show|find|locate|highlight|dikha(?:o|iye|na|do)|kahan|kidhar)\b"
+        r"|(?:बटन|टैब|मेन्यू|विकल्प).{0,20}(?:दिखा|कहाँ|कहां)",
+        re.I)),
+
     # Next step in an active guide.
     (Intent.NEXT_STEP, 7.0, re.compile(
         r"^\s*(next|aage|agla|ho gaya|done|kar liya|ready|continue|next step)\s*[.!?]?\s*$",
@@ -222,6 +241,23 @@ def detect_intent(text: str) -> IntentDetection:
     second = ranked[1][1] if len(ranked) > 1 else 0.0
 
     hint = _topic_hint(text)
+
+    # The locate rule is deliberately broad, so confirm with the stricter
+    # checker before letting it beat a topic rule.
+    #
+    # A locate request that names nothing findable ("where is it?") still stays
+    # LOCATE_ELEMENT: the handler answers "tell me what you're looking for",
+    # which is far more use to the merchant than a generic "I don't know".
+    if best is Intent.LOCATE_ELEMENT:
+        from merchant.locate import is_locate_request
+
+        if not is_locate_request(text):
+            remaining = [(i, s) for i, s in ranked[1:]
+                         if i is not Intent.LOCATE_ELEMENT]
+            if not remaining:
+                return IntentDetection(Intent.UNKNOWN, 0.0, language, topic_hint=hint)
+            best, best_score = remaining[0]
+            second = remaining[1][1] if len(remaining) > 1 else 0.0
 
     # "What is X" is only a term question we can answer if X is a payments term
     # we actually know about. Without a merchant topic, "What is the weather in
