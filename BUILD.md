@@ -131,7 +131,7 @@ For testing with friends this is overkill â€” just tell them to click "Run 
 ## Directory layout after build
 
 ```
-clicky-windows/
+clicky-merchant-mode/
 â”œâ”€â”€ build/              â† PyInstaller scratch (safe to delete)
 â””â”€â”€ dist/
     â”œâ”€â”€ Clicky/         â† portable folder â€” give this to friends
