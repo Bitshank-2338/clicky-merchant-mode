@@ -38,3 +38,8 @@ video/build/
 # Never let a copy of a secrets file slip in
 .env*.bak
 *.bak
+
+# Raw screen recordings. take1.mp4 contains a live Razorpay dashboard with
+# real customer emails, phone numbers and payment IDs — it must never be
+# committed to a public repo.
+video/raw/
