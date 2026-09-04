@@ -17,6 +17,16 @@ preserved unchanged at **[README_CLICKY.md](README_CLICKY.md)**.
 
 ---
 
+![Clicky Merchant Mode reading a settlement breakdown](docs/assets/merchant-mode-demo.gif)
+
+*Live screen capture. The merchant asks why their settlement came up short.
+Clicky reads the breakdown off the dashboard in front of them — gross ₹4,500,
+Razorpay fees ₹90, tax on fees ₹16.20, net settlement ₹4,393.80, UTR
+UTRDEMO0002 — and answers out loud while the cursor sits beside the figures.
+Full walkthrough: [`video/clicky-merchant-mode-SUBMISSION.mp4`](video/clicky-merchant-mode-SUBMISSION.mp4).*
+
+---
+
 ## The problem
 
 A shopkeeper collects ₹10,000 through Razorpay. ₹9,264 arrives in the bank.

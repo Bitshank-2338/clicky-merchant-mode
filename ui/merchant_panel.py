@@ -869,6 +869,18 @@ class MerchantPanel(QWidget):
             return
         self._submit_question(text)
 
+    def ask_question(self, text: str) -> None:
+        """Ask a question programmatically, as if it had been typed.
+
+        Public so a launcher can drive the panel for a screenshot or an
+        unattended demo without synthesising keystrokes.
+        """
+        text = (text or "").strip()
+        if not text:
+            return
+        self._input.setText(text)
+        self._submit_question(text)
+
     def _submit_question(self, text: str) -> None:
         if self._worker is not None and self._worker.isRunning():
             return

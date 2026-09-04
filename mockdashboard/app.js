@@ -672,5 +672,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Initial render
   currentScenario = seed.scenarios.find(s => s.default);
-  renderPage(currentScenario.page || "home");
+
+  // Deep link: ?settlement=<id> opens that settlement's breakdown straight
+  // away. A demo should be one URL, not a URL plus "now click the second row".
+  const params = new URLSearchParams(location.search);
+  const wantScenario = params.get("scenario");
+  if (wantScenario) {
+    const match = seed.scenarios.find(s => s.id === wantScenario);
+    if (match) currentScenario = match;
+  }
+  const wantSettlement = params.get("settlement");
+
+  renderPage(wantSettlement ? "settlements" : (currentScenario.page || "home"));
+
+  if (wantSettlement) {
+    const row = (currentScenario.settlements || [])
+      .find(s => s.id === wantSettlement) || (currentScenario.settlements || [])[0];
+    if (row) {
+      showSettlementModal(row.id, currentScenario);
+      postScreenMap();
+    }
+  }
 });

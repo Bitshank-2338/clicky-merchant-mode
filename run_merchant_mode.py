@@ -71,6 +71,9 @@ def main() -> int:
     parser.add_argument("--grant", action="store_true",
                         help="grant screen permission at startup (for recording; "
                              "normally the merchant clicks the button)")
+    parser.add_argument("--ask", default=None,
+                        help="ask this question once the panel is up — for "
+                             "screenshots and unattended demos")
     args = parser.parse_args()
 
     try:
@@ -109,6 +112,15 @@ def main() -> int:
     # The overlay seeds its position from the cursor on the first tick; nudging
     # it once here avoids a visible jump on the first question.
     QTimer.singleShot(200, lambda: overlay.set_mode("idle"))
+
+    if args.ask:
+        if not privacy.capture_allowed:
+            privacy.grant_permission()
+            print("  Screen permission granted so --ask can read the screen.\n")
+        print(f"  Asking: {args.ask}\n")
+        # Give the window manager a moment to settle, or the capture picks up
+        # a half-painted panel.
+        QTimer.singleShot(1200, lambda: panel.ask_question(args.ask))
 
     print("  Running. Close the panel window to quit.\n")
     return app.exec()
