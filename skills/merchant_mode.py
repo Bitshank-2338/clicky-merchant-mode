@@ -23,11 +23,13 @@ crash the rest of Clicky.
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import re
 
 from merchant.masking import mask_text
 from merchant.models import ScreenContext, WordBox
-from merchant.ocr_boxes import extract_word_boxes, tesseract_available, text_from_boxes
+from merchant.ocr_boxes import extract_word_boxes, ocr_backend, text_from_boxes
 from merchant.pipeline import MerchantPipeline
 from merchant.targeting import resolve_all
 
@@ -51,9 +53,8 @@ def _build_screen_context(pipeline: MerchantPipeline) -> tuple[ScreenContext, ob
 
     Returns an empty, uncaptured ScreenContext (never raising) when capture
     is not permitted, the capture module is unavailable, or anything about
-    reading the screen fails. `merchant.ocr_boxes.tesseract_available()`
-    being False is handled the same way: the pipeline still works, it just
-    reasons about less.
+    reading the screen fails. No OCR engine being installed is handled the
+    same way: the pipeline still works, it just reasons about less.
     """
     if not pipeline.deps.privacy.capture_allowed:
         return ScreenContext(), None, []
@@ -72,7 +73,7 @@ def _build_screen_context(pipeline: MerchantPipeline) -> tuple[ScreenContext, ob
         return ScreenContext(), None, []
 
     word_boxes: list[WordBox] = []
-    if tesseract_available():
+    if ocr_backend():
         try:
             # Bytes live in this local variable only; nothing here is ever
             # written to disk.
@@ -115,26 +116,116 @@ def _build_screen_context(pipeline: MerchantPipeline) -> tuple[ScreenContext, ob
     return ctx, shot, masked_boxes
 
 
+# How long the cursor rests on one element before moving to the next. The
+# overlay's flight animation alone is ~1.8s.
+POINT_DWELL_SECONDS = 2.6
+
+
+async def _point_at_each(manager: object, resolved: list) -> None:
+    """Walk the cursor across the located elements, one at a time.
+
+    Emits through the manager's Qt signals rather than touching the overlay
+    object directly. Two reasons, both of which bit us:
+
+    * `main.py` wires the overlay to `manager.sig_point_at` but never assigns
+      `manager.overlay`, so the direct route silently did nothing in full
+      Clicky — the answer was spoken but the cursor never moved.
+    * This coroutine runs on the manager's asyncio loop on a worker thread.
+      Calling into a QWidget from there is a cross-thread GUI call; a signal
+      marshals it onto the GUI thread properly.
+
+    Falls back to a direct `manager.overlay` reference for hosts that do expose
+    one (the standalone `run_merchant_mode.py` launcher does).
+    """
+    if not resolved:
+        return
+
+    point = getattr(manager, "sig_point_at", None) if manager is not None else None
+    circle = getattr(manager, "sig_circle", None) if manager is not None else None
+    overlay = getattr(manager, "overlay", None) if manager is not None else None
+
+    for index, item in enumerate(resolved):
+        cx, cy = item.center
+        radius = max(item.width, item.height, 24.0) / 2.0 + 6.0
+        try:
+            if point is not None and hasattr(point, "emit"):
+                point.emit(float(cx), float(cy), str(item.target.label))
+                if circle is not None and hasattr(circle, "emit"):
+                    circle.emit(float(cx), float(cy), float(radius))
+            elif overlay is not None:
+                overlay.point_at(cx, cy, item.target.label)
+                overlay.add_circle(cx, cy, radius, ttl=POINT_DWELL_SECONDS * 3)
+        except Exception:
+            pass
+
+        if index < len(resolved) - 1:
+            await asyncio.sleep(POINT_DWELL_SECONDS)
+
+
+# Spoken consent. Merchant Mode refuses to read the screen until permission is
+# given, and in full Clicky there is no panel button to give it — so the
+# merchant grants (and revokes) it out loud. Kept as an explicit phrase rather
+# than an implicit "asking implies consent", because the whole point is that
+# the merchant decides.
+_GRANT = re.compile(
+    r"\b(allow|enable|start|grant)\b.{0,20}\b(screen|reading|dekh|padh)\b"
+    r"|\bscreen\s*(padho|padhna|dekho|dekhna|read karo)\b"
+    r"|\b(haan|haa|yes|ok|okay|theek hai)\b.{0,15}\b(padh|dekh|read|allow)\b"
+    r"|स्क्रीन.{0,15}(पढ़|देख)",
+    re.IGNORECASE,
+)
+
+_REVOKE = re.compile(
+    r"\b(stop|band|bandh|disable)\b.{0,20}\b(monitor|screen|reading|dekh|padh)\b"
+    r"|\bstop monitoring\b|\bscreen band\b"
+    r"|स्क्रीन.{0,15}बंद",
+    re.IGNORECASE,
+)
+
+
+def _consent_reply(granted: bool, transcript: str) -> str:
+    hinglish = bool(re.search(r"[ऀ-ॿ]|padh|dekh|haan|band", transcript, re.I))
+    if granted:
+        return ("Theek hai, ab main sirf wahi window padhungi jo aap dekh rahe hain. "
+                "Kuch bhi save nahi hota. Ab poochiye."
+                if hinglish else
+                "Done — I will read only the window you are looking at, and nothing "
+                "is saved. Ask me anything now.")
+    return ("Screen padhna band kar diya. Ab main kuch nahi dekh rahi."
+            if hinglish else
+            "Screen reading stopped. I am not looking at anything now.")
+
+
 async def handle_merchant(manager: object, transcript: str) -> str:
     try:
         pipeline = _get_pipeline(manager)
+
+        # Consent first — before any capture happens.
+        if _REVOKE.search(transcript or ""):
+            pipeline.stop_monitoring()
+            return _consent_reply(False, transcript)
+        if _GRANT.search(transcript or ""):
+            pipeline.deps.privacy.grant_permission()
+            return _consent_reply(True, transcript)
+
         screen, geo, word_boxes = _build_screen_context(pipeline)
 
         response = await pipeline.ask(transcript, screen)
 
-        overlay = getattr(manager, "overlay", None) if manager is not None else None
-        if overlay is not None and response.highlight_targets:
+        if response.highlight_targets:
+            uia_lookup = None
+            try:
+                from merchant.uia_screen import make_lookup
+
+                uia_lookup = make_lookup()
+            except Exception:
+                uia_lookup = None
+
             resolved = resolve_all(
-                response.highlight_targets, geo=geo, word_boxes=word_boxes, dom_map={},
+                response.highlight_targets, geo=geo, word_boxes=word_boxes,
+                dom_map={}, uia_lookup=uia_lookup,
             )
-            for item in resolved:
-                if not item.found:
-                    continue
-                cx, cy = item.center
-                try:
-                    overlay.point_at(cx, cy, item.target.label)
-                except Exception:
-                    pass
+            await _point_at_each(manager, [r for r in resolved if r.found])
 
         answer = response.answer or ""
         if response.steps:
@@ -161,7 +252,11 @@ SKILL = {
         # before skills are, so claiming them here would shadow existing
         # behaviour. These longer merchant-flavoured phrases are free.
         r"^\s*(?:next\s*step|agla\s*step|aage|agla|ho\s*gaya|kar\s*liya|"
-        r"आगे|अगला)\s*[.!?]*$)"
+        r"आगे|अगला)\s*[.!?]*$|"
+        # Spoken consent to start/stop screen reading. Without these in the
+        # trigger the consent handler below could never be reached.
+        r"(?:allow|enable|grant|start)\s*(?:screen|reading)|screen\s*(?:padho|dekho|reading)|"
+        r"stop\s*monitoring|screen\s*band|स्क्रीन\s*(?:पढ़|देख|बंद))"
     ),
     "description": (
         "Answers merchant/dashboard questions (settlements, refunds, "
