@@ -64,7 +64,8 @@ class TargetStrategy(str, Enum):
     could not be found and Clicky must say so rather than point at a guess.
     """
 
-    DOM_MAP = "dom_map"        # exact rects published by the mock dashboard
+    DOM_MAP = "dom_map"          # exact rects published by the mock dashboard
+    UIA = "uia"                  # Windows UI Automation accessibility tree
     ANCHOR_TEXT = "anchor_text"  # OCR word-box search for the anchor phrase
     VLM = "vlm"                  # vision model, normalised 0-1000
     NONE = "none"

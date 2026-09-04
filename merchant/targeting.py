@@ -19,7 +19,7 @@ screen can send someone to the wrong button.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Protocol, Sequence
+from typing import Callable, Optional, Protocol, Sequence
 
 from merchant.models import HighlightTarget, TargetStrategy, WordBox
 from merchant.ocr_boxes import find_anchor
@@ -155,6 +155,7 @@ def resolve(
     geo: Optional[ScreenGeometry] = None,
     word_boxes: Optional[Sequence[WordBox]] = None,
     dom_map: Optional[dict[str, tuple[int, int, int, int]]] = None,
+    uia_lookup: Optional[Callable[[str], Optional[tuple]]] = None,
     vlm_point: Optional[tuple[float, float]] = None,
 ) -> ResolvedTarget:
     """Locate one target using the best tier that succeeds."""
@@ -170,7 +171,25 @@ def resolve(
                 confidence=0.99, note="located from the dashboard's own layout",
             )
 
-    # Tier 2 — OCR anchor text.
+    # Tier 2 — Windows UI Automation. The browser publishes its accessibility
+    # tree, so on the *real* Razorpay dashboard this gives exact rects for real
+    # controls without needing OCR (or Tesseract) at all. Injected as a callable
+    # so this module stays platform-free and unit-testable.
+    if uia_lookup is not None and target.anchor_text:
+        try:
+            rect = uia_lookup(target.anchor_text)
+        except Exception:
+            rect = None
+        if rect is not None and plausible_rect(rect, geo):
+            x, y, w, h = rect
+            return ResolvedTarget(
+                target=target, found=True, strategy=TargetStrategy.UIA,
+                x=float(x), y=float(y), width=float(w), height=float(h),
+                confidence=0.95,
+                note=f"found '{target.anchor_text}' in the window's accessibility tree",
+            )
+
+    # Tier 3 — OCR anchor text.
     if word_boxes and geo is not None and target.anchor_text:
         match = find_anchor(word_boxes, target.anchor_text)
         if match is not None:
@@ -184,7 +203,7 @@ def resolve(
                 note=f"found the text '{match.matched_text}' on screen",
             )
 
-    # Tier 3 — vision model point. Lowest trust: it is a guess, flagged as one.
+    # Tier 4 — vision model point. Lowest trust: it is a guess, flagged as one.
     if vlm_point is not None and geo is not None:
         x, y = normalised_to_logical(geo, vlm_point[0], vlm_point[1])
         return ResolvedTarget(
@@ -205,9 +224,11 @@ def resolve_all(
     geo: Optional[ScreenGeometry] = None,
     word_boxes: Optional[Sequence[WordBox]] = None,
     dom_map: Optional[dict[str, tuple[int, int, int, int]]] = None,
+    uia_lookup: Optional[Callable[[str], Optional[tuple]]] = None,
 ) -> list[ResolvedTarget]:
     return [
-        resolve(t, geo=geo, word_boxes=word_boxes, dom_map=dom_map)
+        resolve(t, geo=geo, word_boxes=word_boxes, dom_map=dom_map,
+                uia_lookup=uia_lookup)
         for t in targets
     ]
 

@@ -50,7 +50,7 @@ from merchant.models import (
     Step,
     WordBox,
 )
-from merchant.ocr_boxes import extract_word_boxes, tesseract_available, text_from_boxes
+from merchant.ocr_boxes import extract_word_boxes, ocr_backend, text_from_boxes
 from merchant.pipeline import MerchantPipeline
 from merchant.privacy import PrivacySnapshot
 from merchant.targeting import ResolvedTarget, ScreenGeometry, resolve_all, summarise
@@ -116,7 +116,10 @@ def _capture_screen_context(
         return ScreenContext(), None, []
 
     word_boxes: list[WordBox] = []
-    if tesseract_available():
+    # Any available OCR engine will do — Tesseract if installed, otherwise the
+    # pip-only RapidOCR. Gating on Tesseract alone left the real dashboard
+    # unreadable on a machine that had never run its Windows installer.
+    if ocr_backend():
         try:
             image_bytes = base64.b64decode(shot.base64_jpeg)
             word_boxes = extract_word_boxes(image_bytes)
@@ -156,6 +159,11 @@ def _capture_screen_context(
         masked_field_count=combined.total,
     )
     return ctx, shot, masked_boxes
+
+
+# How long the cursor rests on one element before flying to the next. The
+# overlay's flight alone is ~1.8s, so anything shorter cuts the animation off.
+POINT_DWELL_MS = 2600
 
 
 class _AskWorker(QThread):
@@ -332,6 +340,8 @@ class MerchantPanel(QWidget):
         self._last_geo: Optional[ScreenGeometry] = None
         self._last_word_boxes: list[WordBox] = []
         self._last_dom_map: dict[str, tuple[int, int, int, int]] = {}
+        self._pending_points: list[ResolvedTarget] = []
+        self._point_overlay: Optional[CursorOverlay] = None
 
         self._setup_window()
         self._build_ui()
@@ -955,20 +965,47 @@ class MerchantPanel(QWidget):
         into the uncertainty area via `merchant.targeting.summarise` instead
         of being pointed at.
         """
+        uia_lookup = None
+        try:
+            from merchant.uia_screen import make_lookup
+
+            uia_lookup = make_lookup()
+        except Exception:
+            uia_lookup = None
+
         resolved: list[ResolvedTarget] = resolve_all(
-            response.highlight_targets, geo=geo, word_boxes=word_boxes, dom_map=dom_map,
+            response.highlight_targets, geo=geo, word_boxes=word_boxes,
+            dom_map=dom_map, uia_lookup=uia_lookup,
         )
-        for item in resolved:
-            if not item.found:
-                continue
-            cx, cy = item.center
-            overlay.point_at(cx, cy, item.target.label)
-            radius = max(item.width, item.height, 24.0) / 2.0 + 6.0
-            overlay.add_circle(cx, cy, radius, ttl=6.0)
+
+        # Visit the targets one at a time. Calling `point_at` in a loop looks
+        # like a bug on screen: each call restarts the cursor's flight, so only
+        # the last target is ever actually pointed at. Walking them in sequence
+        # is also the honest presentation — the merchant is meant to follow the
+        # deduction from gross to net, not see five rings appear at once.
+        self._pending_points = [item for item in resolved if item.found]
+        self._point_overlay = overlay
+        overlay.clear_annotations()
+        self._advance_pointer()
 
         summary = summarise(resolved)
         if summary:
             self._append_uncertainty(summary)
+
+    def _advance_pointer(self) -> None:
+        """Point at the next resolved target, then schedule the one after."""
+        overlay = self._point_overlay
+        if overlay is None or not self._pending_points:
+            return
+
+        item = self._pending_points.pop(0)
+        cx, cy = item.center
+        overlay.point_at(cx, cy, item.target.label)
+        radius = max(item.width, item.height, 24.0) / 2.0 + 6.0
+        overlay.add_circle(cx, cy, radius, ttl=float(POINT_DWELL_MS) / 1000.0 * 3)
+
+        if self._pending_points:
+            QTimer.singleShot(POINT_DWELL_MS, self._advance_pointer)
 
 
 __all__ = ["MerchantPanel", "ConfirmationDialog", "ManagerLike"]
