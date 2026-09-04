@@ -34,3 +34,7 @@ Desktop.ini
 
 # Video build intermediates (the MP4 itself is committed)
 video/build/
+
+# Never let a copy of a secrets file slip in
+.env*.bak
+*.bak

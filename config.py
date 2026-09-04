@@ -21,6 +21,21 @@ for _name in (".env", ".env.local"):
     if _p.exists():
         load_dotenv(_p, override=True)
 
+# In a .env file, `KEY=` means "not configured" — but dotenv sets it to an empty
+# string, which is a different thing to any library that reads os.environ itself
+# rather than asking us.
+#
+# This is not hypothetical: .env.example ships `OPENAI_BASE_URL=`, and the OpenAI
+# SDK defaults its base_url to os.environ["OPENAI_BASE_URL"] when none is passed.
+# So an empty line in the template made every OpenAI call fail with
+# "Request URL is missing an 'http://' or 'https://' protocol" — while Clicky's
+# own `if cfg.openai_base_url:` guard looked perfectly correct, because the SDK
+# never consulted it.
+#
+# Dropping empties restores the intended meaning for every such library at once.
+for _key in [k for k, v in os.environ.items() if v == ""]:
+    os.environ.pop(_key, None)
+
 
 DEFAULT_SYSTEM_PROMPT = """You are Clicky, a VISUAL AI tutor running on Windows. You live
 next to the user's cursor. Your job is to *show*, not just tell.
