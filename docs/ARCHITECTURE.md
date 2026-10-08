@@ -38,14 +38,27 @@ Clicky ships a plugin system whose triggers are evaluated *before* the LLM runs.
 Merchant Mode registers there. If the merchant never says a merchant phrase, not
 one line of merchant code executes and Clicky behaves exactly as before.
 
-The entire footprint on pre-existing files is **four additive changes**:
+The footprint on pre-existing source files is **five additive changes plus one
+bug fix**:
 
 | File | Change | Existing code touched? |
 |---|---|---|
 | `screen/capture.py` | added `WindowShot`, `active_window_rect()`, `capture_active_window()` | No — new symbols appended |
+| `config.py` | added a loop dropping env vars dotenv set to `""` | No — appended |
+| `audio/capture.py` | added `pcm16_to_float32()` | No — new symbol appended |
 | `requirements.txt` | appended `fastapi`, `uvicorn`, `pytest` | No |
 | `.env.example` | appended optional merchant variables | No |
 | `skills/merchant_mode.py` | new file (auto-discovered by `load_all()`) | No |
+| `audio/stt/faster_whisper_stt.py`, `audio/ambient_listener.py` | stopped routing speech through PyAV | **Yes** — see below |
+
+That last row is the one place existing logic was replaced. It fixes
+clicky-windows issue #24: both sites wrote a temp WAV and gave faster-whisper
+the path, which makes faster-whisper decode it through
+`av.open(..., metadata_errors="ignore")`. PyAV 19.0 removed that argument on
+3 Oct 2026, so with `av` unpinned a fresh install lost all speech input. Clicky
+already has 16kHz mono PCM16 in hand, so both now pass samples directly and the
+decode path is never entered — which also removes a temp-file write per
+utterance. Covered by `tests/test_stt_pyav_independence.py`.
 
 Everything else lives in new directories: `merchant/`, `mockdashboard/`,
 `ui/merchant_panel.py`, `tests/`, `docs/`.

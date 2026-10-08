@@ -51,16 +51,34 @@ Clicky ships a first-class plugin system whose triggers are evaluated **before**
 Mode registers there. This means **Clicky's existing behaviour is untouched**: if the user never
 says a merchant phrase, not one line of merchant code executes.
 
-Edits to pre-existing Clicky files are limited to **purely additive** changes:
+Edits to pre-existing Clicky source files are **additive**, with one exception
+noted below:
 
 | File | Change | Destructive? |
 |---|---|---|
 | `screen/capture.py` | add `capture_active_window()` + `WindowShot` | No — new symbols only |
 | `tutor_features/ocr.py` | add `run_ocr_boxes()` | No — new symbol only |
+| `config.py` | drop env vars that dotenv set to `""` | No — new loop, no existing line changed |
 | `requirements.txt` | append merchant extras | No |
 | `.env.example` | append Razorpay + merchant vars | No |
+| `audio/capture.py` | add `pcm16_to_float32()` | No — new symbol only |
+| `audio/stt/faster_whisper_stt.py` | **rewrote** `_run()` to pass samples | **Yes — see below** |
+| `audio/ambient_listener.py` | **rewrote** `_transcribe_tiny()` to pass samples | **Yes — see below** |
 
-Everything else is new files. `git diff` on the four files above is the whole footprint.
+The last two are a bug fix, not a Merchant Mode feature, and they are the only
+place where existing Clicky logic was replaced rather than extended.
+
+Both handed faster-whisper a path to a temp WAV. faster-whisper decodes
+anything that is not already a numpy array by calling
+`av.open(..., metadata_errors="ignore")`, and **PyAV 19.0 (3 Oct 2026) removed
+that argument**. Since `requirements.txt` carries no upper bound on `av`, any
+install from that date forward resolved to PyAV 19 and *all* speech input died
+with `TypeError: open() got an unexpected keyword argument 'metadata_errors'`
+— reported as clicky-windows issue #24. Clicky already holds 16kHz mono PCM16,
+so both sites now pass samples and the decoder is never reached. Pinned by
+`tests/test_stt_pyav_independence.py`.
+
+Everything else is new files.
 
 ### Key architectural decision — how highlighting avoids hardcoded coordinates
 

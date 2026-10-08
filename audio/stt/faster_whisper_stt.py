@@ -3,7 +3,7 @@ import asyncio
 from typing import Optional
 
 from audio.stt.base_stt import BaseSTT
-from audio.capture import pcm16_to_wav, trim_silence
+from audio.capture import pcm16_to_float32, trim_silence
 from config import cfg
 
 _model_cache = None
@@ -27,19 +27,16 @@ class FasterWhisperSTT(BaseSTT):
 
     async def transcribe(self, pcm_bytes: bytes, sample_rate: int = 16000) -> str:
         pcm_bytes = trim_silence(pcm_bytes)
-        wav_bytes = pcm16_to_wav(pcm_bytes, sample_rate)
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self._run, wav_bytes)
+        return await loop.run_in_executor(None, self._run, pcm_bytes, sample_rate)
 
-    def _run(self, wav_bytes: bytes) -> str:
-        import tempfile, os
+    def _run(self, pcm_bytes: bytes, sample_rate: int) -> str:
+        # Samples, not a file — faster-whisper only reaches for PyAV when it is
+        # handed something it has to decode. See `pcm16_to_float32`.
+        audio = pcm16_to_float32(pcm_bytes, sample_rate)
+        if audio.size == 0:
+            return ""
         model = _get_model()
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            f.write(wav_bytes)
-            path = f.name
-        try:
-            lang = cfg.whisper_language or None  # None = auto-detect
-            segments, _ = model.transcribe(path, beam_size=5, language=lang)
-            return " ".join(s.text.strip() for s in segments).strip()
-        finally:
-            os.unlink(path)
+        lang = cfg.whisper_language or None  # None = auto-detect
+        segments, _ = model.transcribe(audio, beam_size=5, language=lang)
+        return " ".join(s.text.strip() for s in segments).strip()

@@ -163,3 +163,27 @@ def pcm16_to_wav(pcm_data: bytes, sample_rate: int = SAMPLE_RATE) -> bytes:
         b"data", data_size,
     )
     return header + pcm_data
+
+
+def pcm16_to_float32(pcm_data: bytes, sample_rate: int = SAMPLE_RATE) -> np.ndarray:
+    """Conditioned float32 samples at 16kHz, ready to hand straight to Whisper.
+
+    Same preparation as `pcm16_to_wav` — noise gate, then auto-gain — but it
+    stops short of building a container.
+
+    faster-whisper decodes anything that is not already a numpy array through
+    PyAV, and PyAV 19.0 (released 2026-10-03) dropped the `metadata_errors`
+    argument that faster-whisper's `decode_audio` still passes. On a fresh
+    install that resolves to PyAV 19 every transcription therefore dies with
+    `TypeError: open() got an unexpected keyword argument 'metadata_errors'`.
+    Passing samples skips that decode path altogether, so the two libraries no
+    longer have to agree on a signature, and it saves writing a temp WAV per
+    utterance.
+    """
+    pcm_data = apply_noise_gate(pcm_data)
+    pcm_data = normalize_audio(pcm_data)
+    if sample_rate != SAMPLE_RATE:
+        # Whisper's feature extractor is fixed at 16kHz. PyAV used to resample
+        # on our behalf; nothing does now, so it has to happen here.
+        pcm_data = resample_pcm(pcm_data, sample_rate, SAMPLE_RATE)
+    return np.frombuffer(pcm_data, dtype=np.int16).astype(np.float32) / 32768.0

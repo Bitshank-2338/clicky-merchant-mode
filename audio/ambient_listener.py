@@ -16,7 +16,7 @@ from typing import Callable, Optional
 import numpy as np
 import sounddevice as sd
 
-from audio.capture import pcm16_to_wav, resample_pcm, SAMPLE_RATE
+from audio.capture import pcm16_to_float32, resample_pcm, SAMPLE_RATE
 
 
 class Mode(Enum):
@@ -280,27 +280,24 @@ class AmbientListener:
 
     def _transcribe_tiny(self, pcm: bytes) -> str:
         """Pad PCM with silence (whisper accuracy degrades on ultra-short clips)."""
-        import tempfile, os
-        model = self._get_model()
         pad = bytes(int(SAMPLE_RATE * 0.4) * 2)    # 400ms silence each side
-        padded = pad + pcm + pad
-        wav = pcm16_to_wav(padded)
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            f.write(wav)
-            path = f.name
-        try:
-            segments, _ = model.transcribe(
-                path,
-                beam_size=5,
-                language="en",
-                condition_on_previous_text=False,
-                no_speech_threshold=0.45,
-                temperature=0.0,
-                initial_prompt="Clicky is a helpful AI assistant.",
-            )
-            return " ".join(s.text for s in segments)
-        finally:
-            os.unlink(path)
+        # Samples rather than a temp WAV — see `pcm16_to_float32`. This runs on
+        # every speech burst while the wake word is armed, so the file write it
+        # replaces was the hottest one in the app.
+        audio = pcm16_to_float32(pad + pcm + pad)
+        if audio.size == 0:
+            return ""
+        model = self._get_model()
+        segments, _ = model.transcribe(
+            audio,
+            beam_size=5,
+            language="en",
+            condition_on_previous_text=False,
+            no_speech_threshold=0.45,
+            temperature=0.0,
+            initial_prompt="Clicky is a helpful AI assistant.",
+        )
+        return " ".join(s.text for s in segments)
 
     def _get_model(self):
         with self._wake_lock:

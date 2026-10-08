@@ -109,11 +109,11 @@ A suggested short version, all of which is defensible from the repo:
 > demo data is bypassed entirely and amounts are read off the screen, or not
 > given at all.
 >
-> Built additively on Clicky, my existing open-source desktop companion: the
-> only pre-existing files touched are three, and the diff across them contains
-> a single deleted line.
+> Built additively on Clicky, my existing open-source desktop companion: new
+> behaviour arrives as new files plus appended symbols, and the one place
+> existing logic changed is an unrelated upstream bug fix.
 >
-> 285 tests. Evaluated over 36 seeded merchant tasks: 100% page detection, 100%
+> 324 tests. Evaluated over 36 seeded merchant tasks: 100% page detection, 100%
 > factual accuracy, 96.8% highlight recall, 0% hallucination, 0 privacy
 > violations, 100% fallback success with the local model disabled. Evaluated on
 > synthetic data; does not represent production performance.
